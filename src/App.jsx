@@ -21,6 +21,7 @@ const TURNOS = [
   { key: 'N', label: 'Noche (N)' }
 ];
 
+// Normaliza celdas horarias (soporta formato antiguo string y nuevo objeto { status, medico, hora })
 function parseHourEntry(entry) {
   if (!entry) return { status: '', medico: '', hora: '' };
   if (typeof entry === 'string') return { status: entry, medico: '', hora: '' };
@@ -31,6 +32,7 @@ function parseHourEntry(entry) {
   };
 }
 
+// Cliente REST nativo para Supabase
 async function sbFetch(endpoint, options = {}) {
   const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
   const headers = {
@@ -49,6 +51,7 @@ async function sbFetch(endpoint, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+// Compresor seguro de imágenes
 function compressImageFile(file, maxWidth = 640, quality = 0.76) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -134,15 +137,128 @@ const DEMO_SEED = {
       observaciones: 'Mantener vía permeable en miembro anterior derecho. Control estricto de vómitos y temperatura.',
       foto_jaula_url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80',
       activa: true
+    },
+    {
+      id: 'hhhh2222-2222-2222-2222-222222222222',
+      paciente_id: 'bbbb2222-2222-2222-2222-222222222222',
+      fecha_ingreso: TODAY_STR,
+      fecha_retiro: null,
+      dias_recomendados: '2 días',
+      ubicacion: 'HOSPITAL GENERAL',
+      condicion: 'OBS',
+      medico_responsable: 'MVZ. Cristhian Romero',
+      diagnostico: 'FLUTD / Obstrucción uretral post-sondaje',
+      observaciones: 'Monitorear producción urinaria y permeabilidad de sonda.',
+      foto_jaula_url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=600&q=80',
+      activa: true
     }
   ],
-  medicaciones: [],
-  monitoreos: [],
-  consultas: [],
-  preventivos: [],
+  medicaciones: [
+    {
+      id: 'mmmm1111-1111-1111-1111-111111111111',
+      hospitalizacion_id: 'hhhh1111-1111-1111-1111-111111111111',
+      medicina: 'ENZIMAX',
+      dosis: '2 ml',
+      via: 'VO',
+      frecuencia: 'C12',
+      duracion: '5 días',
+      horarios_json: {
+        '9am': { status: 'done', medico: 'MVZ. Cristhian Romero', hora: '09:05' },
+        '9pm': { status: 'pending', medico: '', hora: '' }
+      }
+    },
+    {
+      id: 'mmmm2222-2222-2222-2222-222222222222',
+      hospitalizacion_id: 'hhhh1111-1111-1111-1111-111111111111',
+      medicina: 'UVITA GEL',
+      dosis: '3 cm',
+      via: 'VO',
+      frecuencia: 'C12',
+      duracion: '5 días',
+      horarios_json: {
+        '9am': { status: 'done', medico: 'MVZ. Cristhian Romero', hora: '09:08' },
+        '9pm': { status: 'pending', medico: '', hora: '' }
+      }
+    },
+    {
+      id: 'mmmm3333-3333-3333-3333-333333333333',
+      hospitalizacion_id: 'hhhh1111-1111-1111-1111-111111111111',
+      medicina: 'HEPATOMIC',
+      dosis: '1.5 ml',
+      via: 'IV',
+      frecuencia: 'C24',
+      duracion: '4 días',
+      horarios_json: {
+        '11am': { status: 'done', medico: 'MVZ. Cristhian Romero', hora: '11:02' }
+      }
+    },
+    {
+      id: 'mmmm4444-4444-4444-4444-444444444444',
+      hospitalizacion_id: 'hhhh1111-1111-1111-1111-111111111111',
+      medicina: 'PROTEIZOO',
+      dosis: '5 ml',
+      via: 'IV lento',
+      frecuencia: 'C12',
+      duracion: '3 días',
+      horarios_json: {
+        '11am': { status: 'done', medico: 'MVZ. Cristhian Romero', hora: '11:05' },
+        '11pm': { status: 'pending', medico: '', hora: '' }
+      }
+    }
+  ],
+  monitoreos: [
+    { id: 'nnnn1111-1111-1111-1111-111111111111', hospitalizacion_id: 'hhhh1111-1111-1111-1111-111111111111', fecha: TODAY_STR, turno: 'M', responsable: 'Cris', comida: 'Ayuno', conciencia: 'ACT', temperatura: '38.6', vomitos: 'N', diarreas: 'S', orina: 'S', heces: 'S', deshidratacion: '5%', fluidoterapia_ml_h: '35' },
+    { id: 'nnnn2222-2222-2222-2222-222222222222', hospitalizacion_id: 'hhhh1111-1111-1111-1111-111111111111', fecha: TODAY_STR, turno: 'T', responsable: 'Cris', comida: 'Blanda 30g', conciencia: 'ACT', temperatura: '38.4', vomitos: 'N', diarreas: 'N', orina: 'S', heces: 'N', deshidratacion: '0%', fluidoterapia_ml_h: '25' }
+  ],
+  consultas: [
+    {
+      id: 'cccc1111-1111-1111-1111-111111111111',
+      paciente_id: 'aaaa1111-1111-1111-1111-111111111111',
+      fecha: TODAY_STR,
+      medico: 'MVZ. Cristhian Romero',
+      motivo: 'Decaimiento y diarrea pastosa con estrías de sangre',
+      anamnesis: 'Inició ayer por la noche con anorexia y dos episodios de diarrea.',
+      temperatura: '38.9 °C',
+      fc: '128 lpm',
+      fr: '28 rpm',
+      trc: '2 seg',
+      mucosas: 'Rosadas pálidas',
+      deshidratacion: '6%',
+      examen_fisico: 'Dolor leve a la palpación abdominal mesogástrica. Linfonodos submandibulares normales.',
+      diferenciales: 'Parvovirosis canina, Gastroenteritis parasitaria (Giardia/Ancylostoma), Indiscreción alimentaria.',
+      diagnostico: 'Gastroenteritis hemorrágica aguda',
+      tratamiento: 'Hospitalización, fluidoterapia Ringer Lactato, protector hepático y soporte nutricional.',
+      observaciones: 'Se solicita hemograma y test rápido.'
+    }
+  ],
+  preventivos: [
+    {
+      id: 'pppp1111-1111-1111-1111-111111111111',
+      paciente_id: 'aaaa1111-1111-1111-1111-111111111111',
+      tipo: 'Vacuna',
+      producto: 'Séxtuple Canina (DHPPI + L)',
+      dosis: '1 ml SC',
+      fecha_aplicacion: '2026-02-15',
+      proxima_fecha: '2027-02-15',
+      observaciones: 'Refuerzo anual sin reacciones'
+    },
+    {
+      id: 'pppp2222-2222-2222-2222-222222222222',
+      paciente_id: 'aaaa1111-1111-1111-1111-111111111111',
+      tipo: 'Desp. Interna',
+      producto: 'Febantel + Pirantel + Praziquantel',
+      dosis: '1 tab / 10 kg',
+      fecha_aplicacion: '2026-09-01',
+      proxima_fecha: '2026-12-01',
+      observaciones: 'Control trimestral'
+    }
+  ],
   adjuntos: []
 };
 
+// ============================================================================
+// COMPONENTE: BOTONES DE GALERÍA + CÁMARA
+// ============================================================================
 function PhotoActionButtons({ onImageSelected, onOpenCamera, compact = false }) {
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -170,6 +286,7 @@ function PhotoActionButtons({ onImageSelected, onOpenCamera, compact = false }) 
           type="file"
           accept="image/*"
           onChange={handleFileChange}
+          title="Seleccionar imagen desde galería o PC"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
       </div>
@@ -188,6 +305,9 @@ function PhotoActionButtons({ onImageSelected, onOpenCamera, compact = false }) 
   );
 }
 
+// ============================================================================
+// COMPONENTE: MODAL DE CÁMARA EN VIVO + RESPALDO NATIVO MÓVIL
+// ============================================================================
 function CameraCaptureModal({ isOpen, onClose, onCapture, title = 'Capturar Fotografía' }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -288,6 +408,7 @@ function CameraCaptureModal({ isOpen, onClose, onCapture, title = 'Capturar Foto
                 type="button"
                 onClick={() => setFacingMode((m) => (m === 'environment' ? 'user' : 'environment'))}
                 className="absolute top-3 right-3 bg-slate-900/70 text-white p-2 rounded-full hover:bg-slate-900"
+                title="Cambiar cámara frontal/trasera"
               >
                 <SwitchCamera className="w-4 h-4" />
               </button>
@@ -328,6 +449,9 @@ function CameraCaptureModal({ isOpen, onClose, onCapture, title = 'Capturar Foto
   );
 }
 
+// ============================================================================
+// APLICACIÓN PRINCIPAL: CLÍNICA VETERINARIA EL PIBE
+// ============================================================================
 export default function App() {
   const [propietarios, setPropietarios] = useState([]);
   const [pacientes, setPacientes] = useState([]);
@@ -345,6 +469,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
 
+  // Médico activo de guardia que registra la administración de medicamentos
   const [activeDoctor, setActiveDoctor] = useState(() => {
     return localStorage.getItem('el_pibe_active_doctor') || 'MVZ. Cristhian Romero';
   });
@@ -367,6 +492,7 @@ export default function App() {
     fotoUrl: '', hospitalizarAhora: true, ubicacion: 'HOSPITAL GENERAL', diagnostico: ''
   });
 
+  // Estados de Alta Médica e Historial de Hospitalizaciones
   const [showDischargeModal, setShowDischargeModal] = useState(false);
   const [dischargeForm, setDischargeForm] = useState({
     fecha_retiro: TODAY_STR,
@@ -393,6 +519,7 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Cargar datos desde Supabase
   const loadAllData = async () => {
     setDbStatus('checking');
     try {
@@ -484,8 +611,12 @@ export default function App() {
       await sbFetch('propietarios?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.propietarios) });
       await sbFetch('pacientes?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.pacientes) });
       await sbFetch('hospitalizaciones?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.hospitalizaciones) });
+      await sbFetch('hosp_medicacion?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.medicaciones) });
+      await sbFetch('hosp_monitoreo?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.monitoreos) });
+      await sbFetch('consultas?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.consultas) });
+      await sbFetch('preventivos?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.preventivos) });
       setIsEmptyCloud(false);
-      notify('¡Chavo sincronizado en tu nube Supabase!');
+      notify('¡Chavo y Max sincronizados en tu nube Supabase!');
       await loadAllData();
     } catch (err) {
       notify(`Error al sincronizar: ${err.message}`, 'error');
@@ -503,6 +634,7 @@ export default function App() {
   const currentPreventivos = preventivos.filter((p) => p.paciente_id === currentPaciente?.id);
   const currentAdjuntos = adjuntos.filter((a) => a.paciente_id === currentPaciente?.id);
 
+  // Abrir modal de Alta Médica con cálculo automático de días
   const openDischargeModal = () => {
     if (!currentHosp) return;
     const calcDays = calculateStayDays(currentHosp.fecha_ingreso || TODAY_STR, TODAY_STR);
@@ -514,6 +646,7 @@ export default function App() {
     setShowDischargeModal(true);
   };
 
+  // Confirmar Alta Médica y archivar hospitalización completa
   const handleConfirmDischarge = async (e) => {
     e.preventDefault();
     if (!currentHosp) return;
@@ -611,6 +744,8 @@ export default function App() {
     }
   };
 
+  // Ciclo de 4 estados por toma:
+  // '' (sin programar) -> 'pending' (programado amarillo) -> 'done' (aplicado verde + médico + hora) -> 'missed' (faltó rojo + médico) -> ''
   const toggleMedHour = async (med, hour) => {
     const parsed = parseHourEntry(med.horarios_json?.[hour]);
     const doctorName = activeDoctor.trim() || 'Médico de turno';
@@ -1424,6 +1559,9 @@ export default function App() {
                       <h3 className="font-bold text-slate-800">
                         {currentPaciente.nombre} no está hospitalizado actualmente
                       </h3>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        Puedes iniciar un nuevo ingreso hospitalario o revisar abajo sus hospitalizaciones anteriores.
+                      </p>
                       <button
                         onClick={handleAdmitPatient}
                         className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl inline-flex items-center gap-1.5"
@@ -1494,8 +1632,34 @@ export default function App() {
                               />
                             </div>
                           </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                                Diagnóstico Presuntivo / Definitivo
+                              </label>
+                              <input
+                                type="text"
+                                value={currentHosp.diagnostico || ''}
+                                onChange={(e) => updateHospField('diagnostico', e.target.value)}
+                                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                                Indicaciones / Observaciones
+                              </label>
+                              <input
+                                type="text"
+                                value={currentHosp.observaciones || ''}
+                                onChange={(e) => updateHospField('observaciones', e.target.value)}
+                                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                              />
+                            </div>
+                          </div>
                         </div>
 
+                        {/* GRILLA HORARIA CON AUDITORÍA DE MÉDICO RESPONSABLE */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-teal-50/70 border border-teal-200/80 p-3 rounded-xl">
                             <div>
@@ -1520,7 +1684,7 @@ export default function App() {
                                   value={activeDoctor}
                                   onChange={(e) => setActiveDoctor(e.target.value)}
                                   placeholder="Nombre del médico de turno"
-                                  className="w-full text-xs font-bold bg-white border border-teal-300 rounded-lg px-2.5 py-1 text-slate-900 focus:outline-none"
+                                  className="w-full text-xs font-bold bg-white border border-teal-300 rounded-lg px-2.5 py-1 text-slate-900 focus:outline-none focus:border-teal-600"
                                 />
                               </div>
                             </div>
@@ -1564,6 +1728,15 @@ export default function App() {
                                           <button
                                             type="button"
                                             onClick={() => toggleMedHour(med, h)}
+                                            title={
+                                              entry.status === 'done'
+                                                ? `Aplicado por ${entry.medico || 'Médico'} ${entry.hora ? `a las ${entry.hora}` : ''}`
+                                                : entry.status === 'missed'
+                                                ? `FALTÓ medicación (Registrado por ${entry.medico || 'Médico'})`
+                                                : entry.status === 'pending'
+                                                ? 'Programado (tocar para marcar Aplicado)'
+                                                : 'Tocar para programar'
+                                            }
                                             className={`w-14 min-h-[38px] py-1 px-1 rounded-lg border font-bold flex flex-col items-center justify-center mx-auto transition ${
                                               entry.status === 'done'
                                                 ? 'bg-emerald-500 border-emerald-600 text-white shadow-xs'
@@ -1603,6 +1776,7 @@ export default function App() {
                                       <button
                                         onClick={() => handleDeleteMedication(med.id)}
                                         className="p-1 text-slate-400 hover:text-rose-600"
+                                        title="Eliminar fármaco"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -1612,6 +1786,50 @@ export default function App() {
                               </tbody>
                             </table>
                           </div>
+
+                          {/* Bitácora legible de quién medicó o qué dosis faltó */}
+                          {currentMeds.length > 0 && (
+                            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 space-y-1">
+                              <p className="text-[10px] font-extrabold uppercase text-slate-500">
+                                Bitácora de Administración del Día
+                              </p>
+                              <div className="space-y-1 text-[11px]">
+                                {currentMeds.map((med) => {
+                                  const entries = HOURS.map((hr) => ({
+                                    hr,
+                                    ...parseHourEntry(med.horarios_json?.[hr])
+                                  })).filter((e) => e.status !== '');
+
+                                  if (entries.length === 0) return null;
+
+                                  return (
+                                    <div key={med.id} className="flex flex-wrap items-center gap-1.5">
+                                      <strong className="text-slate-800">{med.medicina}:</strong>
+                                      {entries.map((e) => (
+                                        <span
+                                          key={e.hr}
+                                          className={`px-2 py-0.5 rounded-md font-semibold ${
+                                            e.status === 'done'
+                                              ? 'bg-emerald-100 text-emerald-800'
+                                              : e.status === 'missed'
+                                              ? 'bg-rose-100 text-rose-800'
+                                              : 'bg-amber-100 text-amber-800'
+                                          }`}
+                                        >
+                                          {e.hr}{' '}
+                                          {e.status === 'done'
+                                            ? `✓ Aplicó: ${e.medico || 'Médico'}${e.hora ? ` (${e.hora})` : ''}`
+                                            : e.status === 'missed'
+                                            ? `✗ FALTÓ (${e.medico || 'Sin registro'})`
+                                            : '• Pendiente'}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
 
                           <form
                             onSubmit={handleAddMedication}
@@ -1639,6 +1857,7 @@ export default function App() {
                               <option value="IV">IV</option>
                               <option value="VO">VO</option>
                               <option value="SC">SC</option>
+                              <option value="IM">IM</option>
                             </select>
                             <select
                               value={newMed.frecuencia}
@@ -1647,6 +1866,8 @@ export default function App() {
                             >
                               <option value="C24">C24h</option>
                               <option value="C12">C12h</option>
+                              <option value="C8">C8h</option>
+                              <option value="C6">C6h</option>
                             </select>
                             <button
                               type="submit"
@@ -1657,6 +1878,76 @@ export default function App() {
                             </button>
                           </form>
                         </div>
+
+                        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-sm font-extrabold text-slate-900">
+                              Monitoreo Clínico por Turnos
+                            </h3>
+                            <input
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => setSelectedDate(e.target.value)}
+                              className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1"
+                            />
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-slate-100 text-slate-700">
+                                  <th className="text-left py-2 px-2.5 rounded-tl-lg">Parámetro</th>
+                                  {TURNOS.map((t) => (
+                                    <th key={t.key} className="text-center py-2 px-2">
+                                      {t.label}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {[
+                                  { key: 'responsable', label: 'Responsable', placeholder: 'Nombre' },
+                                  { key: 'temperatura', label: 'Temperatura (°C)', placeholder: '38.5' },
+                                  { key: 'conciencia', label: 'Conciencia (ACT/LET/EST)', placeholder: 'ACT' },
+                                  { key: 'comida', label: 'Apetito / Comida', placeholder: 'Come bien' },
+                                  { key: 'vomitos', label: 'Vómitos (S / N)', placeholder: 'N' },
+                                  { key: 'diarreas', label: 'Diarreas (S / N)', placeholder: 'N' },
+                                  { key: 'orina', label: 'Orina (S / N)', placeholder: 'S' },
+                                  { key: 'heces', label: 'Heces (S / N)', placeholder: 'N' },
+                                  { key: 'deshidratacion', label: 'Deshidratación (%)', placeholder: '0%' },
+                                  { key: 'fluidoterapia_ml_h', label: 'Fluidoterapia (ml/h)', placeholder: '30' }
+                                ].map((row) => (
+                                  <tr key={row.key}>
+                                    <td className="py-1.5 px-2.5 font-semibold text-slate-700">
+                                      {row.label}
+                                    </td>
+                                    {TURNOS.map((t) => {
+                                      const rec = monitoreos.find(
+                                        (m) =>
+                                          m.hospitalizacion_id === currentHosp.id &&
+                                          m.fecha === selectedDate &&
+                                          m.turno === t.key
+                                      );
+                                      return (
+                                        <td key={t.key} className="py-1 px-1.5">
+                                          <input
+                                            type="text"
+                                            value={rec?.[row.key] || ''}
+                                            placeholder={row.placeholder}
+                                            onChange={(e) =>
+                                              updateMonitoreoCell(t.key, row.key, e.target.value)
+                                            }
+                                            className="w-full text-center text-xs bg-slate-50 border border-slate-200 rounded-lg py-1 px-1.5 focus:bg-white focus:border-teal-500 focus:outline-none"
+                                          />
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="xl:col-span-4 space-y-4">
@@ -1665,7 +1956,11 @@ export default function App() {
                             <h3 className="text-sm font-extrabold text-slate-900">
                               Foto en Jaula
                             </h3>
+                            <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-[11px] font-bold border border-teal-200">
+                              {currentHosp.ubicacion}
+                            </span>
                           </div>
+
                           <div className="relative rounded-xl overflow-hidden bg-slate-900 aspect-[4/3] border border-slate-200">
                             {currentHosp.foto_jaula_url || currentPaciente.foto_url ? (
                               <img
@@ -1680,6 +1975,7 @@ export default function App() {
                               </div>
                             )}
                           </div>
+
                           <PhotoActionButtons
                             onImageSelected={(url) => handleUpdatePhoto({ type: 'jaula' }, url)}
                             onOpenCamera={() => setCameraTarget({ type: 'jaula' })}
@@ -1689,6 +1985,7 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* HISTORIAL DE HOSPITALIZACIONES DADAS DE ALTA CON AUDITORÍA DE MÉDICOS */}
                   {pastHosps.length > 0 && (
                     <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                       <div className="flex items-center gap-2">
@@ -1697,8 +1994,393 @@ export default function App() {
                           Historial de Hospitalizaciones Anteriores ({pastHosps.length})
                         </h3>
                       </div>
+
+                      <div className="space-y-3">
+                        {pastHosps.map((hosp) => {
+                          const histMeds = medicaciones.filter((m) => m.hospitalizacion_id === hosp.id);
+                          const histMons = monitoreos.filter((m) => m.hospitalizacion_id === hosp.id);
+                          const isExpanded = expandedHistoryId === hosp.id;
+
+                          return (
+                            <div
+                              key={hosp.id}
+                              className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white text-[11px] font-bold">
+                                    ALTA MÉDICA
+                                  </span>
+                                  <span className="text-xs font-extrabold text-slate-900">
+                                    Ingreso: {hosp.fecha_ingreso} → Alta: {hosp.fecha_retiro || 'Registrada'}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-extrabold">
+                                    Estancia: {hosp.dias_recomendados || calculateStayDays(hosp.fecha_ingreso, hosp.fecha_retiro)}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-semibold text-slate-500">
+                                  {hosp.ubicacion} • {hosp.medico_responsable}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-slate-800">
+                                <strong>Diagnóstico:</strong> {hosp.diagnostico || 'Sin diagnóstico registrado'}
+                              </p>
+
+                              {hosp.observaciones && (
+                                <p className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 whitespace-pre-line">
+                                  {hosp.observaciones}
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-[11px] text-slate-500 font-semibold">
+                                  {histMeds.length} medicamento(s) • {histMons.length} registro(s) de turno
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedHistoryId(isExpanded ? null : hosp.id)}
+                                  className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-teal-700 flex items-center gap-1"
+                                >
+                                  <span>{isExpanded ? 'Ocultar detalle' : 'Ver medicación y turnos'}</span>
+                                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="pt-2 border-t border-slate-200 space-y-3">
+                                  <div>
+                                    <h4 className="text-[11px] font-extrabold uppercase text-slate-600 mb-1.5">
+                                      Registro de Medicación y Médico Responsable por Toma
+                                    </h4>
+                                    {histMeds.length === 0 ? (
+                                      <p className="text-xs text-slate-500">No se registraron medicamentos.</p>
+                                    ) : (
+                                      <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                                        <table className="w-full text-xs">
+                                          <thead className="bg-slate-800 text-white">
+                                            <tr>
+                                              <th className="text-left py-1.5 px-2.5">Fármaco</th>
+                                              <th className="text-left py-1.5 px-2">Dosis / Vía</th>
+                                              <th className="text-left py-1.5 px-2">Detalle de Tomas (Quién aplicó / Faltantes)</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100">
+                                            {histMeds.map((m) => {
+                                              const entries = HOURS.map((hr) => ({
+                                                hr,
+                                                ...parseHourEntry(m.horarios_json?.[hr])
+                                              })).filter((e) => e.status !== '');
+
+                                              return (
+                                                <tr key={m.id}>
+                                                  <td className="py-2 px-2.5 font-bold text-slate-800 align-top">
+                                                    {m.medicina}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-slate-600 align-top">
+                                                    {m.dosis} ({m.via}) • {m.frecuencia}
+                                                  </td>
+                                                  <td className="py-2 px-2">
+                                                    {entries.length === 0 ? (
+                                                      <span className="text-slate-400">Sin tomas marcadas</span>
+                                                    ) : (
+                                                      <div className="flex flex-wrap gap-1.5">
+                                                        {entries.map((e) => (
+                                                          <span
+                                                            key={e.hr}
+                                                            className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                                                              e.status === 'done'
+                                                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                                                : e.status === 'missed'
+                                                                ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                                                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                                            }`}
+                                                          >
+                                                            {e.hr}:{' '}
+                                                            {e.status === 'done'
+                                                              ? `✓ Aplicó ${e.medico || 'Médico'}${e.hora ? ` (${e.hora})` : ''}`
+                                                              : e.status === 'missed'
+                                                              ? `✗ FALTÓ DE MEDICAR (${e.medico || 'Sin registro'})`
+                                                              : 'Pendiente'}
+                                                          </span>
+                                                        ))}
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {histMons.length > 0 && (
+                                    <div>
+                                      <h4 className="text-[11px] font-extrabold uppercase text-slate-600 mb-1.5">
+                                        Controles de Turno Registrados
+                                      </h4>
+                                      <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                                        <table className="w-full text-[11px]">
+                                          <thead className="bg-slate-100 text-slate-700">
+                                            <tr>
+                                              <th className="text-left py-1.5 px-2">Fecha / Turno</th>
+                                              <th className="text-left py-1.5 px-2">T°</th>
+                                              <th className="text-left py-1.5 px-2">Comida</th>
+                                              <th className="text-left py-1.5 px-2">Vóm / Diar</th>
+                                              <th className="text-left py-1.5 px-2">Fluido</th>
+                                              <th className="text-left py-1.5 px-2">Resp.</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100">
+                                            {histMons.map((mon) => (
+                                              <tr key={mon.id}>
+                                                <td className="py-1.5 px-2 font-bold">{mon.fecha} ({mon.turno})</td>
+                                                <td className="py-1.5 px-2">{mon.temperatura || '-'}</td>
+                                                <td className="py-1.5 px-2">{mon.comida || '-'}</td>
+                                                <td className="py-1.5 px-2">{mon.vomitos}/{mon.diarreas}</td>
+                                                <td className="py-1.5 px-2">{mon.fluidoterapia_ml_h ? `${mon.fluidoterapia_ml_h} ml/h` : '-'}</td>
+                                                <td className="py-1.5 px-2">{mon.responsable || '-'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'consultas' && (
+                <div className="space-y-4">
+                  <form
+                    onSubmit={handleSaveConsulta}
+                    className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3"
+                  >
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      Registrar Nueva Consulta Clínica
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Motivo de consulta *"
+                        value={newConsulta.motivo}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, motivo: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Médico veterinario"
+                        value={newConsulta.medico}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, medico: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Temp (°C)"
+                        value={newConsulta.temperatura}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, temperatura: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="FC (lpm)"
+                        value={newConsulta.fc}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, fc: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="FR (rpm)"
+                        value={newConsulta.fr}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, fr: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="TRC"
+                        value={newConsulta.trc}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, trc: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Mucosas"
+                        value={newConsulta.mucosas}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, mucosas: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Deshidr. %"
+                        value={newConsulta.deshidratacion}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, deshidratacion: e.target.value })}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                    </div>
+
+                    <textarea
+                      rows={2}
+                      placeholder="Anamnesis y hallazgos al examen físico..."
+                      value={newConsulta.examen_fisico}
+                      onChange={(e) => setNewConsulta({ ...newConsulta, examen_fisico: e.target.value })}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <textarea
+                        rows={2}
+                        placeholder="Diagnósticos diferenciales (lista de sospechas clínicas)..."
+                        value={newConsulta.diferenciales}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, diferenciales: e.target.value })}
+                        className="w-full text-xs bg-amber-50/60 border border-amber-200 rounded-xl px-3 py-2"
+                      />
+                      <textarea
+                        rows={2}
+                        placeholder="Diagnóstico presuntivo / definitivo y plan terapéutico..."
+                        value={newConsulta.tratamiento}
+                        onChange={(e) => setNewConsulta({ ...newConsulta, tratamiento: e.target.value })}
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Guardar Consulta
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="space-y-3">
+                    {currentConsultas.map((c) => (
+                      <div key={c.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-teal-700">{c.fecha}</span>
+                          <span className="text-xs text-slate-500 font-semibold">{c.medico}</span>
+                        </div>
+                        <h4 className="font-bold text-sm text-slate-900">{c.motivo}</h4>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg">
+                          <span><strong>T°:</strong> {c.temperatura || '-'}</span>
+                          <span>• <strong>FC:</strong> {c.fc || '-'}</span>
+                          <span>• <strong>FR:</strong> {c.fr || '-'}</span>
+                          <span>• <strong>Mucosas:</strong> {c.mucosas || '-'}</span>
+                          <span>• <strong>Deshidr:</strong> {c.deshidratacion || '-'}</span>
+                        </div>
+                        {c.examen_fisico && <p className="text-xs text-slate-700">{c.examen_fisico}</p>}
+                        {c.diferenciales && (
+                          <p className="text-xs bg-amber-50 border border-amber-200 text-amber-900 p-2 rounded-lg">
+                            <strong>Diferenciales:</strong> {c.diferenciales}
+                          </p>
+                        )}
+                        {c.tratamiento && (
+                          <p className="text-xs text-slate-800">
+                            <strong>Plan / Tratamiento:</strong> {c.tratamiento}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'preventivos' && (
+                <div className="space-y-4">
+                  <form
+                    onSubmit={handleSavePreventivo}
+                    className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs grid grid-cols-1 sm:grid-cols-6 gap-2.5"
+                  >
+                    <select
+                      value={newPrev.tipo}
+                      onChange={(e) => setNewPrev({ ...newPrev, tipo: e.target.value })}
+                      className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-bold"
+                    >
+                      <option value="Vacuna">Vacuna</option>
+                      <option value="Desp. Interna">Desp. Interna</option>
+                      <option value="Desp. Externa">Desp. Externa</option>
+                    </select>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Producto / Biológico *"
+                      value={newPrev.producto}
+                      onChange={(e) => setNewPrev({ ...newPrev, producto: e.target.value })}
+                      className="sm:col-span-2 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Dosis"
+                      value={newPrev.dosis}
+                      onChange={(e) => setNewPrev({ ...newPrev, dosis: e.target.value })}
+                      className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                    />
+                    <div>
+                      <input
+                        type="date"
+                        title="Próxima fecha"
+                        value={newPrev.proxima_fecha}
+                        onChange={(e) => setNewPrev({ ...newPrev, proxima_fecha: e.target.value })}
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Registrar
+                    </button>
+                  </form>
+
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-900 text-white">
+                        <tr>
+                          <th className="text-left py-2.5 px-3">Tipo</th>
+                          <th className="text-left py-2.5 px-3">Producto</th>
+                          <th className="text-left py-2.5 px-3">Aplicación</th>
+                          <th className="text-left py-2.5 px-3">Próximo Refuerzo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {currentPreventivos.map((pr) => (
+                          <tr key={pr.id}>
+                            <td className="py-2.5 px-3 font-bold text-teal-700">{pr.tipo}</td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-800">
+                              {pr.producto} {pr.dosis ? `(${pr.dosis})` : ''}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600">{pr.fecha_aplicacion}</td>
+                            <td className="py-2.5 px-3">
+                              {pr.proxima_fecha ? (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                                  {pr.proxima_fecha}
+                                </span>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -1812,6 +2494,7 @@ export default function App() {
         </main>
       )}
 
+      {/* MODAL DE ALTA MÉDICA HOSPITALARIA */}
       {showDischargeModal && currentHosp && (
         <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
           <form
@@ -1869,13 +2552,30 @@ export default function App() {
               </div>
             </div>
 
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+              <p className="text-[11px] font-extrabold text-slate-700">
+                Medicación que quedará archivada ({currentMeds.length}):
+              </p>
+              {currentMeds.length === 0 ? (
+                <p className="text-xs text-slate-500">Sin medicamentos registrados.</p>
+              ) : (
+                <ul className="text-xs text-slate-600 space-y-1 max-h-28 overflow-y-auto">
+                  {currentMeds.map((m) => (
+                    <li key={m.id}>
+                      • <strong>{m.medicina}</strong> ({m.dosis}, {m.via}, {m.frecuencia})
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
                 Indicaciones de Alta / Tratamiento en Casa
               </label>
               <textarea
                 rows={3}
-                placeholder="Ej. Dieta blanda por 3 días..."
+                placeholder="Ej. Dieta blanda por 3 días, continuar omeprazol 10 mg VO cada 24h por 5 días..."
                 value={dischargeForm.notas_alta}
                 onChange={(e) => setDischargeForm({ ...dischargeForm, notas_alta: e.target.value })}
                 className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
@@ -1963,6 +2663,7 @@ export default function App() {
                 >
                   <option value="CANINO">CANINO</option>
                   <option value="FELINO">FELINO</option>
+                  <option value="EXÓTICO">EXÓTICO</option>
                 </select>
                 <input
                   type="text"
@@ -1971,7 +2672,79 @@ export default function App() {
                   onChange={(e) => setNewPatientForm({ ...newPatientForm, pacRaza: e.target.value })}
                   className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                 />
+                <select
+                  value={newPatientForm.pacSexo}
+                  onChange={(e) => setNewPatientForm({ ...newPatientForm, pacSexo: e.target.value })}
+                  className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                >
+                  <option value="M">Macho</option>
+                  <option value="H">Hembra</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Edad (ej. 2 años)"
+                  value={newPatientForm.pacEdad}
+                  onChange={(e) => setNewPatientForm({ ...newPatientForm, pacEdad: e.target.value })}
+                  className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Peso (kg)"
+                  value={newPatientForm.pacPeso}
+                  onChange={(e) => setNewPatientForm({ ...newPatientForm, pacPeso: e.target.value })}
+                  className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                />
               </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                {newPatientForm.fotoUrl && (
+                  <img
+                    src={newPatientForm.fotoUrl}
+                    alt="Vista previa"
+                    className="w-12 h-12 rounded-xl object-cover border border-slate-200"
+                  />
+                )}
+                <PhotoActionButtons
+                  onImageSelected={(url) => setNewPatientForm({ ...newPatientForm, fotoUrl: url })}
+                  onOpenCamera={() => setCameraTarget({ type: 'nuevo' })}
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newPatientForm.hospitalizarAhora}
+                  onChange={(e) =>
+                    setNewPatientForm({ ...newPatientForm, hospitalizarAhora: e.target.checked })
+                  }
+                  className="rounded text-teal-600"
+                />
+                <span>Ingresar directamente a Hospitalización</span>
+              </label>
+
+              {newPatientForm.hospitalizarAhora && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <select
+                    value={newPatientForm.ubicacion}
+                    onChange={(e) => setNewPatientForm({ ...newPatientForm, ubicacion: e.target.value })}
+                    className="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold"
+                  >
+                    <option value="HOSPITAL GENERAL">HOSPITAL GENERAL</option>
+                    <option value="INFECTOLOGIA">INFECTOLOGIA</option>
+                    <option value="UCI">UCI</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Motivo / Diagnóstico de ingreso"
+                    value={newPatientForm.diagnostico}
+                    onChange={(e) => setNewPatientForm({ ...newPatientForm, diagnostico: e.target.value })}
+                    className="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
