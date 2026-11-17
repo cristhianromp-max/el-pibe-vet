@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Plus, Camera, Image as ImageIcon, Check, Clock, AlertTriangle,
-  Activity, Stethoscope, Syringe, FileText, Share2, RefreshCw, User,
-  Phone, MapPin, Calendar, Trash2, ExternalLink, Upload, X, CheckCircle2,
+  Activity, Stethoscope, FileText, RefreshCw, User,
+  Phone, MapPin, Trash2, ExternalLink, Upload, X, CheckCircle2,
   Database, Cloud, LayoutGrid, ClipboardList, HeartPulse, ShieldCheck,
-  Send, SwitchCamera, Save, Eye
+  Send, SwitchCamera, Save
 } from 'lucide-react';
 
 // ============================================================================
@@ -40,7 +40,7 @@ async function sbFetch(endpoint, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-// Compresor seguro de imágenes (con respaldo directo si el navegador restringe canvas)
+// Compresor seguro de imágenes
 function compressImageFile(file, maxWidth = 640, quality = 0.76) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -68,7 +68,6 @@ function compressImageFile(file, maxWidth = 640, quality = 0.76) {
   });
 }
 
-// Datos iniciales de demostración (Chavo y Max)
 const TODAY_STR = new Date().toISOString().split('T')[0];
 
 const DEMO_SEED = {
@@ -189,7 +188,7 @@ const DEMO_SEED = {
 };
 
 // ============================================================================
-// COMPONENTE: BOTONES DE GALERÍA + CÁMARA (COMPATIBLE PC, MÓVIL Y APK)
+// COMPONENTE: BOTONES DE GALERÍA + CÁMARA
 // ============================================================================
 function PhotoActionButtons({ onImageSelected, onOpenCamera, compact = false }) {
   const handleFileChange = async (e) => {
@@ -396,18 +395,17 @@ export default function App() {
 
   const [selectedPacienteId, setSelectedPacienteId] = useState('');
   const [activeTab, setActiveTab] = useState('hospitalizacion');
-  const [viewMode, setViewMode] = useState('ficha'); // 'ficha' | 'jaulas'
+  const [viewMode, setViewMode] = useState('ficha');
   const [cageFilter, setCageFilter] = useState('TODAS');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
 
-  const [dbStatus, setDbStatus] = useState('checking'); // 'checking' | 'connected' | 'local'
+  const [dbStatus, setDbStatus] = useState('checking');
   const [isEmptyCloud, setIsEmptyCloud] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // Modales
-  const [cameraTarget, setCameraTarget] = useState(null); // { type: 'paciente' | 'jaula' | 'nuevo' | 'jaula_id', id?: string }
+  const [cameraTarget, setCameraTarget] = useState(null);
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState({
     propNombre: '', propCedula: '', propTelefono: '', propDireccion: '',
@@ -416,7 +414,6 @@ export default function App() {
     fotoUrl: '', hospitalizarAhora: true, ubicacion: 'HOSPITAL GENERAL', diagnostico: ''
   });
 
-  // Formularios clínicos rápidos
   const [newMed, setNewMed] = useState({ medicina: '', dosis: '', via: 'IV', frecuencia: 'C12', duracion: '3 días' });
   const [newConsulta, setNewConsulta] = useState({
     medico: 'MVZ. Cristhian Romero', motivo: '', anamnesis: '',
@@ -432,10 +429,10 @@ export default function App() {
 
   const notify = (msg, type = 'success') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 4000);
   };
 
-  // Cargar datos desde Supabase (con respaldo automático local)
+  // Cargar datos desde Supabase
   const loadAllData = async () => {
     setDbStatus('checking');
     try {
@@ -508,7 +505,6 @@ export default function App() {
     loadAllData();
   }, []);
 
-  // Guardar caché local de respaldo
   useEffect(() => {
     if (pacientes.length > 0) {
       localStorage.setItem(
@@ -521,17 +517,18 @@ export default function App() {
     }
   }, [propietarios, pacientes, hospitalizaciones, medicaciones, monitoreos, consultas, preventivos, adjuntos]);
 
-  // Subir pacientes demo (Chavo y Max) a Supabase con 1 clic
+  // Subir pacientes demo usando UPSERT (evita error 23505 de claves duplicadas)
   const handleSeedCloudDemo = async () => {
     setSeeding(true);
     try {
-      await sbFetch('propietarios', { method: 'POST', body: JSON.stringify(DEMO_SEED.propietarios) });
-      await sbFetch('pacientes', { method: 'POST', body: JSON.stringify(DEMO_SEED.pacientes) });
-      await sbFetch('hospitalizaciones', { method: 'POST', body: JSON.stringify(DEMO_SEED.hospitalizaciones) });
-      await sbFetch('hosp_medicacion', { method: 'POST', body: JSON.stringify(DEMO_SEED.medicaciones) });
-      await sbFetch('hosp_monitoreo', { method: 'POST', body: JSON.stringify(DEMO_SEED.monitoreos) });
-      await sbFetch('consultas', { method: 'POST', body: JSON.stringify(DEMO_SEED.consultas) });
-      await sbFetch('preventivos', { method: 'POST', body: JSON.stringify(DEMO_SEED.preventivos) });
+      const upsertPrefer = 'resolution=merge-duplicates,return=representation';
+      await sbFetch('propietarios?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.propietarios) });
+      await sbFetch('pacientes?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.pacientes) });
+      await sbFetch('hospitalizaciones?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.hospitalizaciones) });
+      await sbFetch('hosp_medicacion?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.medicaciones) });
+      await sbFetch('hosp_monitoreo?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.monitoreos) });
+      await sbFetch('consultas?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.consultas) });
+      await sbFetch('preventivos?on_conflict=id', { method: 'POST', prefer: upsertPrefer, body: JSON.stringify(DEMO_SEED.preventivos) });
       setIsEmptyCloud(false);
       notify('¡Chavo y Max sincronizados en tu nube Supabase!');
       await loadAllData();
@@ -542,7 +539,6 @@ export default function App() {
     }
   };
 
-  // Datos del paciente seleccionado
   const currentPaciente = pacientes.find((p) => p.id === selectedPacienteId) || pacientes[0];
   const currentPropietario = propietarios.find((pr) => pr.id === currentPaciente?.propietario_id);
   const currentHosp = hospitalizaciones.find((h) => h.paciente_id === currentPaciente?.id && h.activa);
@@ -551,7 +547,6 @@ export default function App() {
   const currentPreventivos = preventivos.filter((p) => p.paciente_id === currentPaciente?.id);
   const currentAdjuntos = adjuntos.filter((a) => a.paciente_id === currentPaciente?.id);
 
-  // Actualizar foto de paciente o jaula
   const handleUpdatePhoto = async (target, dataUrl) => {
     if (!target) return;
     if (target.type === 'nuevo') {
@@ -565,7 +560,7 @@ export default function App() {
         prev.map((p) => (p.id === currentPaciente.id ? { ...p, foto_url: dataUrl } : p))
       );
       notify('Foto de perfil actualizada');
-      if (dbStatus === 'connected' && !isEmptyCloud) {
+      if (dbStatus === 'connected') {
         try {
           await sbFetch(`pacientes?id=eq.${currentPaciente.id}`, {
             method: 'PATCH',
@@ -582,7 +577,7 @@ export default function App() {
         prev.map((h) => (h.id === currentHosp.id ? { ...h, foto_jaula_url: dataUrl } : h))
       );
       notify('Foto en jaula actualizada');
-      if (dbStatus === 'connected' && !isEmptyCloud) {
+      if (dbStatus === 'connected') {
         try {
           await sbFetch(`hospitalizaciones?id=eq.${currentHosp.id}`, {
             method: 'PATCH',
@@ -599,7 +594,7 @@ export default function App() {
         prev.map((h) => (h.id === target.id ? { ...h, foto_jaula_url: dataUrl } : h))
       );
       notify('Foto de jaula actualizada');
-      if (dbStatus === 'connected' && !isEmptyCloud) {
+      if (dbStatus === 'connected') {
         try {
           await sbFetch(`hospitalizaciones?id=eq.${target.id}`, {
             method: 'PATCH',
@@ -612,7 +607,6 @@ export default function App() {
     }
   };
 
-  // Alternar celda horaria de medicación (vacío -> pendiente amarillo -> aplicado verde ✓)
   const toggleMedHour = async (med, hour) => {
     const currentVal = med.horarios_json?.[hour] || '';
     const nextVal = currentVal === '' ? 'pending' : currentVal === 'pending' ? 'done' : '';
@@ -624,7 +618,7 @@ export default function App() {
       prev.map((m) => (m.id === med.id ? { ...m, horarios_json: updatedJson } : m))
     );
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         await sbFetch(`hosp_medicacion?id=eq.${med.id}`, {
           method: 'PATCH',
@@ -636,7 +630,6 @@ export default function App() {
     }
   };
 
-  // Agregar nueva línea de medicación
   const handleAddMedication = async (e) => {
     e.preventDefault();
     if (!currentHosp || !newMed.medicina.trim()) return;
@@ -656,7 +649,7 @@ export default function App() {
     setNewMed({ medicina: '', dosis: '', via: 'IV', frecuencia: 'C12', duracion: '3 días' });
     notify('Medicación añadida a la grilla');
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         const res = await sbFetch('hosp_medicacion', { method: 'POST', body: JSON.stringify(payload) });
         if (res?.[0]) {
@@ -670,7 +663,7 @@ export default function App() {
 
   const handleDeleteMedication = async (medId) => {
     setMedicaciones((prev) => prev.filter((m) => m.id !== medId));
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         await sbFetch(`hosp_medicacion?id=eq.${medId}`, { method: 'DELETE' });
       } catch (err) {
@@ -679,13 +672,12 @@ export default function App() {
     }
   };
 
-  // Actualizar cabecera de hospitalización
   const updateHospField = async (field, value) => {
     if (!currentHosp) return;
     setHospitalizaciones((prev) =>
       prev.map((h) => (h.id === currentHosp.id ? { ...h, [field]: value } : h))
     );
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         await sbFetch(`hospitalizaciones?id=eq.${currentHosp.id}`, {
           method: 'PATCH',
@@ -697,7 +689,6 @@ export default function App() {
     }
   };
 
-  // Actualizar celda de monitoreo por turno (M / T / N)
   const updateMonitoreoCell = async (turnoKey, field, value) => {
     if (!currentHosp) return;
     const existing = monitoreos.find(
@@ -728,7 +719,7 @@ export default function App() {
       return [...prev, { id: crypto.randomUUID(), ...updatedRecord }];
     });
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         await sbFetch('hosp_monitoreo?on_conflict=hospitalizacion_id,fecha,turno', {
           method: 'POST',
@@ -741,7 +732,6 @@ export default function App() {
     }
   };
 
-  // Ingresar un paciente no hospitalizado a hospitalización
   const handleAdmitPatient = async () => {
     if (!currentPaciente) return;
     const payload = {
@@ -760,7 +750,7 @@ export default function App() {
     setHospitalizaciones((prev) => [{ id: tempId, ...payload }, ...prev]);
     notify('Paciente ingresado a hospitalización');
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         const res = await sbFetch('hospitalizaciones', { method: 'POST', body: JSON.stringify(payload) });
         if (res?.[0]) {
@@ -772,7 +762,7 @@ export default function App() {
     }
   };
 
-  // Registrar nuevo paciente + propietario
+  // Registrar nuevo paciente + propietario directamente en Supabase
   const handleCreatePatient = async (e) => {
     e.preventDefault();
     if (!newPatientForm.pacNombre.trim() || !newPatientForm.propNombre.trim()) return;
@@ -800,8 +790,12 @@ export default function App() {
       foto_url: newPatientForm.fotoUrl || ''
     };
 
-    setPropietarios((prev) => [{ id: tempPropId, ...propPayload }, ...prev]);
-    setPacientes((prev) => [{ id: tempPacId, ...pacPayload }, ...prev]);
+    const basePropietarios = isEmptyCloud ? [] : propietarios;
+    const basePacientes = isEmptyCloud ? [] : pacientes;
+    const baseHospitalizaciones = isEmptyCloud ? [] : hospitalizaciones;
+
+    setPropietarios([{ id: tempPropId, ...propPayload }, ...basePropietarios]);
+    setPacientes([{ id: tempPacId, ...pacPayload }, ...basePacientes]);
     setSelectedPacienteId(tempPacId);
 
     let hospPayload = null;
@@ -819,7 +813,9 @@ export default function App() {
         foto_jaula_url: newPatientForm.fotoUrl || '',
         activa: true
       };
-      setHospitalizaciones((prev) => [{ id: tempHospId, ...hospPayload }, ...prev]);
+      setHospitalizaciones([{ id: tempHospId, ...hospPayload }, ...baseHospitalizaciones]);
+    } else if (isEmptyCloud) {
+      setHospitalizaciones([]);
     }
 
     setShowNewPatientModal(false);
@@ -829,9 +825,8 @@ export default function App() {
       pacEdad: '', pacPeso: '', pacComportamiento: 'D', pacAlergias: 'Ninguna conocida',
       fotoUrl: '', hospitalizarAhora: true, ubicacion: 'HOSPITAL GENERAL', diagnostico: ''
     });
-    notify(`Paciente ${pacPayload.nombre} registrado correctamente`);
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         const [savedProp] = await sbFetch('propietarios', { method: 'POST', body: JSON.stringify(propPayload) });
         const realPropId = savedProp.id;
@@ -844,6 +839,7 @@ export default function App() {
         const realPacId = savedPac.id;
         setPacientes((prev) => prev.map((p) => (p.id === tempPacId ? savedPac : p)));
         setSelectedPacienteId(realPacId);
+        setIsEmptyCloud(false);
 
         if (hospPayload) {
           const [savedHosp] = await sbFetch('hospitalizaciones', {
@@ -852,13 +848,15 @@ export default function App() {
           });
           setHospitalizaciones((prev) => prev.map((h) => (h.id === tempHospId ? savedHosp : h)));
         }
+        notify(`Paciente ${pacPayload.nombre} guardado en Supabase`);
       } catch (err) {
-        console.error('Error guardando paciente en nube:', err);
+        notify(`Error al guardar en nube: ${err.message}`, 'error');
       }
+    } else {
+      notify(`Paciente ${pacPayload.nombre} guardado localmente`);
     }
   };
 
-  // Guardar nueva consulta clínica
   const handleSaveConsulta = async (e) => {
     e.preventDefault();
     if (!currentPaciente || !newConsulta.motivo.trim()) return;
@@ -878,7 +876,7 @@ export default function App() {
     });
     notify('Consulta clínica guardada');
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         const res = await sbFetch('consultas', { method: 'POST', body: JSON.stringify(payload) });
         if (res?.[0]) setConsultas((prev) => prev.map((c) => (c.id === tempId ? res[0] : c)));
@@ -888,7 +886,6 @@ export default function App() {
     }
   };
 
-  // Guardar preventivo (vacuna / desparasitación)
   const handleSavePreventivo = async (e) => {
     e.preventDefault();
     if (!currentPaciente || !newPrev.producto.trim()) return;
@@ -903,7 +900,7 @@ export default function App() {
     setNewPrev({ tipo: 'Vacuna', producto: '', dosis: '', fecha_aplicacion: TODAY_STR, proxima_fecha: '', observaciones: '' });
     notify('Control preventivo registrado');
 
-    if (dbStatus === 'connected' && !isEmptyCloud) {
+    if (dbStatus === 'connected') {
       try {
         const res = await sbFetch('preventivos', { method: 'POST', body: JSON.stringify(payload) });
         if (res?.[0]) setPreventivos((prev) => prev.map((p) => (p.id === tempId ? res[0] : p)));
@@ -913,7 +910,6 @@ export default function App() {
     }
   };
 
-  // Subir archivo/examen a Google Drive (Apps Script conectado)
   const handleUploadToDrive = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !currentPaciente) return;
@@ -949,7 +945,6 @@ export default function App() {
         driveFileUrl = json.fileUrl || json.url || json.viewUrl || '';
         driveFolderUrl = json.folderUrl || '';
       } catch {
-        // Si el navegador bloquea lectura de respuesta opaca de Apps Script, conservamos referencia
         driveFileUrl = base64Full.length < 180000 ? base64Full : 'https://drive.google.com/drive/my-drive';
       }
 
@@ -968,7 +963,7 @@ export default function App() {
       setExamForm({ categoria: 'Hemograma', notas: '' });
       notify(`Examen guardado en carpeta Drive: ${folderName}`);
 
-      if (dbStatus === 'connected' && !isEmptyCloud) {
+      if (dbStatus === 'connected') {
         const saved = await sbFetch('adjuntos', { method: 'POST', body: JSON.stringify(adjPayload) });
         if (saved?.[0]) setAdjuntos((prev) => prev.map((a) => (a.id === tempId ? saved[0] : a)));
       }
@@ -980,7 +975,6 @@ export default function App() {
     }
   };
 
-  // Compartir resultado por WhatsApp al propietario
   const sendExamWhatsApp = (adj) => {
     const rawPhone = (currentPropietario?.telefono || '').replace(/\D/g, '');
     const phone = rawPhone.startsWith('0') ? `593${rawPhone.slice(1)}` : rawPhone;
@@ -994,7 +988,6 @@ export default function App() {
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
-  // Filtrado de pacientes en el buscador
   const filteredPacientes = pacientes.filter((p) => {
     const prop = propietarios.find((pr) => pr.id === p.propietario_id);
     const q = searchQuery.toLowerCase();
@@ -1005,7 +998,6 @@ export default function App() {
     );
   });
 
-  // Jaulas activas para tablero visual
   const activeCages = hospitalizaciones.filter((h) => {
     if (!h.activa) return false;
     if (cageFilter === 'TODAS') return true;
@@ -1026,7 +1018,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">
-      {/* NOTIFICACIÓN FLOTANTE */}
       {toast && (
         <div
           className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-xl text-white text-sm font-semibold flex items-center gap-2 ${
@@ -1038,7 +1029,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DE CÁMARA EN VIVO */}
       <CameraCaptureModal
         isOpen={Boolean(cameraTarget)}
         onClose={() => setCameraTarget(null)}
@@ -1050,29 +1040,23 @@ export default function App() {
         }
       />
 
-      {/* BARRA SUPERIOR CLÍNICA */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-          {/* LOGO CLÍNICA VETERINARIA EL PIBE */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center text-white shadow-sm shrink-0">
               <HeartPulse className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 leading-none">
-                  CLÍNICA VETERINARIA <span className="text-teal-700">EL PIBE</span>
-                </h1>
-              </div>
+              <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 leading-none">
+                CLÍNICA VETERINARIA <span className="text-teal-700">EL PIBE</span>
+              </h1>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                 Sistema de Historiales Clínicos y Hospitalización
               </p>
             </div>
           </div>
 
-          {/* INDICADORES DE ESTADO Y VISTAS */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Estado Supabase */}
             <div
               className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${
                 dbStatus === 'connected'
@@ -1091,13 +1075,11 @@ export default function App() {
               </span>
             </div>
 
-            {/* Estado Google Drive (Siempre conectado) */}
             <div className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-sky-50 text-sky-700 border border-sky-200">
               <Cloud className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Drive Conectado</span>
             </div>
 
-            {/* Selector Ficha vs Tablero Jaulas */}
             <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
               <button
                 onClick={() => setViewMode('ficha')}
@@ -1133,11 +1115,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* BANNER DE SINCRONIZACIÓN INICIAL SI LA NUBE ESTÁ VACÍA */}
         {dbStatus === 'connected' && isEmptyCloud && (
           <div className="bg-teal-900 text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2">
             <span>
-              Tu base de datos en Supabase está lista pero aún no tiene pacientes guardados.
+              Base de datos lista: registra un <strong>Nuevo Paciente</strong> o carga los de ejemplo.
             </span>
             <button
               onClick={handleSeedCloudDemo}
@@ -1145,15 +1126,12 @@ export default function App() {
               className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold rounded-lg flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${seeding ? 'animate-spin' : ''}`} />
-              {seeding ? 'Sincronizando...' : 'Guardar Paciente Demo (Chavo) en la Nube'}
+              {seeding ? 'Sincronizando...' : 'Guardar Demo (Chavo) en Nube'}
             </button>
           </div>
         )}
       </header>
 
-      {/* ==================================================================== */}
-      {/* VISTA 1: TABLERO VISUAL DE JAULAS ACTIVAS                            */}
-      {/* ==================================================================== */}
       {viewMode === 'jaulas' ? (
         <main className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1254,11 +1232,7 @@ export default function App() {
           </div>
         </main>
       ) : (
-        /* ==================================================================== */
-        /* VISTA 2: EXPEDIENTE CLÍNICO COMPLETO                                 */
-        /* ==================================================================== */
         <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* COLUMNA IZQUIERDA: BUSCADOR DE PACIENTES */}
           <aside className="lg:col-span-3 space-y-3">
             <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs space-y-3">
               <div className="relative">
@@ -1319,10 +1293,8 @@ export default function App() {
             </div>
           </aside>
 
-          {/* COLUMNA PRINCIPAL: FICHA DEL PACIENTE */}
           {currentPaciente && (
             <section className="lg:col-span-9 space-y-4">
-              {/* CABECERA DEL PACIENTE Y PROPIETARIO */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start sm:items-center gap-4">
@@ -1369,7 +1341,6 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Info Propietario */}
                       <div className="pt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5 text-teal-600" />
@@ -1397,7 +1368,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* PESTAÑAS DE MÓDULOS CLÍNICOS */}
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto">
                   {[
                     { id: 'hospitalizacion', label: 'Hospitalización', icon: Activity },
@@ -1425,9 +1395,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* ============================================================ */}
-              {/* MÓDULO A: FICHA DE HOSPITALIZACIÓN                           */}
-              {/* ============================================================ */}
               {activeTab === 'hospitalizacion' && (
                 <>
                   {!currentHosp ? (
@@ -1449,9 +1416,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                      {/* PANEL PRINCIPAL IZQUIERDO (8 cols) */}
                       <div className="xl:col-span-8 space-y-4">
-                        {/* Datos de ingreso y condición */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
@@ -1524,17 +1489,14 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* CUADRÍCULA HORARIA DE MEDICACIÓN */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                              <h3 className="text-sm font-extrabold text-slate-900">
-                                Plan Terapéutico y Grilla Horaria
-                              </h3>
-                              <p className="text-[11px] text-slate-500">
-                                Toca cada celda horaria: Amarillo = Programado • Verde ✓ = Administrado
-                              </p>
-                            </div>
+                          <div>
+                            <h3 className="text-sm font-extrabold text-slate-900">
+                              Plan Terapéutico y Grilla Horaria
+                            </h3>
+                            <p className="text-[11px] text-slate-500">
+                              Toca cada celda horaria: Amarillo = Programado • Verde ✓ = Administrado
+                            </p>
                           </div>
 
                           <div className="overflow-x-auto">
@@ -1605,7 +1567,6 @@ export default function App() {
                             </table>
                           </div>
 
-                          {/* Formulario rápido para añadir medicamento */}
                           <form
                             onSubmit={handleAddMedication}
                             className="pt-2 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-6 gap-2"
@@ -1654,7 +1615,6 @@ export default function App() {
                           </form>
                         </div>
 
-                        {/* MONITOREO POR TURNOS (M / T / N) */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <h3 className="text-sm font-extrabold text-slate-900">
@@ -1726,7 +1686,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* PANEL LATERAL DERECHO: FOTO EN JAULA (4 cols) */}
                       <div className="xl:col-span-4 space-y-4">
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                           <div className="flex items-center justify-between">
@@ -1764,9 +1723,6 @@ export default function App() {
                 </>
               )}
 
-              {/* ============================================================ */}
-              {/* MÓDULO B: CONSULTAS CLÍNICAS Y DIAGNÓSTICOS DIFERENCIALES    */}
-              {/* ============================================================ */}
               {activeTab === 'consultas' && (
                 <div className="space-y-4">
                   <form
@@ -1876,7 +1832,6 @@ export default function App() {
                     </div>
                   </form>
 
-                  {/* Historial de Consultas */}
                   <div className="space-y-3">
                     {currentConsultas.map((c) => (
                       <div key={c.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
@@ -1909,9 +1864,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ============================================================ */}
-              {/* MÓDULO C: CONTROL PREVENTIVO (VACUNAS Y DESPARASITACIONES)   */}
-              {/* ============================================================ */}
               {activeTab === 'preventivos' && (
                 <div className="space-y-4">
                   <form
@@ -1995,9 +1947,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ============================================================ */}
-              {/* MÓDULO D: EXÁMENES, GOOGLE DRIVE Y ENVÍO POR WHATSAPP        */}
-              {/* ============================================================ */}
               {activeTab === 'examenes' && (
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
@@ -2054,7 +2003,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Lista de exámenes guardados */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {currentAdjuntos.length === 0 ? (
                       <div className="col-span-full bg-white rounded-2xl border border-slate-200 p-6 text-center text-xs text-slate-500">
@@ -2109,9 +2057,6 @@ export default function App() {
         </main>
       )}
 
-      {/* ==================================================================== */}
-      {/* MODAL: REGISTRAR NUEVO PACIENTE Y PROPIETARIO                        */}
-      {/* ==================================================================== */}
       {showNewPatientModal && (
         <div className="fixed inset-0 z-40 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <form
@@ -2131,7 +2076,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Datos Propietario */}
             <div className="space-y-2">
               <h4 className="text-[11px] font-extrabold uppercase text-teal-700">
                 1. Datos del Propietario
@@ -2155,7 +2099,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Datos Mascota */}
             <div className="space-y-2">
               <h4 className="text-[11px] font-extrabold uppercase text-teal-700">
                 2. Datos de la Mascota
@@ -2210,7 +2153,6 @@ export default function App() {
                 />
               </div>
 
-              {/* Foto inicial */}
               <div className="flex items-center gap-3 pt-1">
                 {newPatientForm.fotoUrl && (
                   <img
@@ -2226,7 +2168,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Opción de ingreso directo a hospitalización */}
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
               <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
                 <input
