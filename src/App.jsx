@@ -4,7 +4,7 @@ import {
   Activity, Stethoscope, FileText, RefreshCw, User,
   Phone, MapPin, Trash2, ExternalLink, Upload, X, CheckCircle2,
   Database, Cloud, LayoutGrid, ClipboardList, HeartPulse, ShieldCheck,
-  Send, SwitchCamera, Save
+  Send, SwitchCamera, Save, LogOut, History, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // ============================================================================
@@ -68,6 +68,15 @@ function compressImageFile(file, maxWidth = 640, quality = 0.76) {
   });
 }
 
+function calculateStayDays(startDateStr, endDateStr) {
+  if (!startDateStr || !endDateStr) return '1 día';
+  const start = new Date(`${startDateStr}T00:00:00`);
+  const end = new Date(`${endDateStr}T00:00:00`);
+  const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+  const days = Math.max(1, diff + 1);
+  return days === 1 ? '1 día' : `${days} días`;
+}
+
 const TODAY_STR = new Date().toISOString().split('T')[0];
 
 const DEMO_SEED = {
@@ -108,6 +117,7 @@ const DEMO_SEED = {
       id: 'hhhh1111-1111-1111-1111-111111111111',
       paciente_id: 'aaaa1111-1111-1111-1111-111111111111',
       fecha_ingreso: TODAY_STR,
+      fecha_retiro: null,
       dias_recomendados: '3 - 5 días',
       ubicacion: 'INFECTOLOGIA',
       condicion: 'EST',
@@ -121,6 +131,7 @@ const DEMO_SEED = {
       id: 'hhhh2222-2222-2222-2222-222222222222',
       paciente_id: 'bbbb2222-2222-2222-2222-222222222222',
       fecha_ingreso: TODAY_STR,
+      fecha_retiro: null,
       dias_recomendados: '2 días',
       ubicacion: 'HOSPITAL GENERAL',
       condicion: 'OBS',
@@ -414,6 +425,15 @@ export default function App() {
     fotoUrl: '', hospitalizarAhora: true, ubicacion: 'HOSPITAL GENERAL', diagnostico: ''
   });
 
+  // Estados de Alta Médica e Historial de Hospitalizaciones
+  const [showDischargeModal, setShowDischargeModal] = useState(false);
+  const [dischargeForm, setDischargeForm] = useState({
+    fecha_retiro: TODAY_STR,
+    dias_totales: '1 día',
+    notas_alta: ''
+  });
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+
   const [newMed, setNewMed] = useState({ medicina: '', dosis: '', via: 'IV', frecuencia: 'C12', duracion: '3 días' });
   const [newConsulta, setNewConsulta] = useState({
     medico: 'MVZ. Cristhian Romero', motivo: '', anamnesis: '',
@@ -517,7 +537,6 @@ export default function App() {
     }
   }, [propietarios, pacientes, hospitalizaciones, medicaciones, monitoreos, consultas, preventivos, adjuntos]);
 
-  // Subir pacientes demo usando UPSERT (evita error 23505 de claves duplicadas)
   const handleSeedCloudDemo = async () => {
     setSeeding(true);
     try {
@@ -542,10 +561,60 @@ export default function App() {
   const currentPaciente = pacientes.find((p) => p.id === selectedPacienteId) || pacientes[0];
   const currentPropietario = propietarios.find((pr) => pr.id === currentPaciente?.propietario_id);
   const currentHosp = hospitalizaciones.find((h) => h.paciente_id === currentPaciente?.id && h.activa);
+  const pastHosps = hospitalizaciones.filter((h) => h.paciente_id === currentPaciente?.id && !h.activa);
   const currentMeds = medicaciones.filter((m) => m.hospitalizacion_id === currentHosp?.id);
   const currentConsultas = consultas.filter((c) => c.paciente_id === currentPaciente?.id);
   const currentPreventivos = preventivos.filter((p) => p.paciente_id === currentPaciente?.id);
   const currentAdjuntos = adjuntos.filter((a) => a.paciente_id === currentPaciente?.id);
+
+  // Abrir modal de Alta Médica con cálculo automático de días
+  const openDischargeModal = () => {
+    if (!currentHosp) return;
+    const calcDays = calculateStayDays(currentHosp.fecha_ingreso || TODAY_STR, TODAY_STR);
+    setDischargeForm({
+      fecha_retiro: TODAY_STR,
+      dias_totales: calcDays,
+      notas_alta: ''
+    });
+    setShowDischargeModal(true);
+  };
+
+  // Confirmar Alta Médica y archivar hospitalización completa
+  const handleConfirmDischarge = async (e) => {
+    e.preventDefault();
+    if (!currentHosp) return;
+
+    const prevObs = currentHosp.observaciones ? `${currentHosp.observaciones}\n` : '';
+    const altaNote = dischargeForm.notas_alta.trim()
+      ? `[ALTA ${dischargeForm.fecha_retiro} - ${dischargeForm.dias_totales}]: ${dischargeForm.notas_alta.trim()}`
+      : `[ALTA ${dischargeForm.fecha_retiro} - ${dischargeForm.dias_totales}]`;
+    const finalObservaciones = `${prevObs}${altaNote}`.trim();
+
+    const patchData = {
+      activa: false,
+      fecha_retiro: dischargeForm.fecha_retiro,
+      dias_recomendados: dischargeForm.dias_totales,
+      observaciones: finalObservaciones
+    };
+
+    setHospitalizaciones((prev) =>
+      prev.map((h) => (h.id === currentHosp.id ? { ...h, ...patchData } : h))
+    );
+    setExpandedHistoryId(currentHosp.id);
+    setShowDischargeModal(false);
+    notify(`Alta registrada para ${currentPaciente?.nombre} (${dischargeForm.dias_totales})`);
+
+    if (dbStatus === 'connected') {
+      try {
+        await sbFetch(`hospitalizaciones?id=eq.${currentHosp.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(patchData)
+        });
+      } catch (err) {
+        notify(`Error guardando alta en nube: ${err.message}`, 'error');
+      }
+    }
+  };
 
   const handleUpdatePhoto = async (target, dataUrl) => {
     if (!target) return;
@@ -737,6 +806,7 @@ export default function App() {
     const payload = {
       paciente_id: currentPaciente.id,
       fecha_ingreso: TODAY_STR,
+      fecha_retiro: null,
       dias_recomendados: '3 días',
       ubicacion: 'HOSPITAL GENERAL',
       condicion: 'EST',
@@ -762,7 +832,6 @@ export default function App() {
     }
   };
 
-  // Registrar nuevo paciente + propietario directamente en Supabase
   const handleCreatePatient = async (e) => {
     e.preventDefault();
     if (!newPatientForm.pacNombre.trim() || !newPatientForm.propNombre.trim()) return;
@@ -804,6 +873,7 @@ export default function App() {
       hospPayload = {
         paciente_id: tempPacId,
         fecha_ingreso: TODAY_STR,
+        fecha_retiro: null,
         dias_recomendados: '3 días',
         ubicacion: newPatientForm.ubicacion,
         condicion: 'EST',
@@ -1370,7 +1440,11 @@ export default function App() {
 
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto">
                   {[
-                    { id: 'hospitalizacion', label: 'Hospitalización', icon: Activity },
+                    {
+                      id: 'hospitalizacion',
+                      label: `Hospitalización${pastHosps.length > 0 ? ` (${pastHosps.length} prev.)` : ''}`,
+                      icon: Activity
+                    },
                     { id: 'consultas', label: `Consultas (${currentConsultas.length})`, icon: Stethoscope },
                     { id: 'preventivos', label: `Preventivos (${currentPreventivos.length})`, icon: ShieldCheck },
                     { id: 'examenes', label: `Exámenes y Drive (${currentAdjuntos.length})`, icon: FileText }
@@ -1396,28 +1470,42 @@ export default function App() {
               </div>
 
               {activeTab === 'hospitalizacion' && (
-                <>
+                <div className="space-y-5">
                   {!currentHosp ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
-                      <Activity className="w-10 h-10 text-slate-300 mx-auto" />
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center space-y-3">
+                      <Activity className="w-9 h-9 text-slate-300 mx-auto" />
                       <h3 className="font-bold text-slate-800">
                         {currentPaciente.nombre} no está hospitalizado actualmente
                       </h3>
                       <p className="text-xs text-slate-500 max-w-md mx-auto">
-                        Puedes abrir una ficha de hospitalización para llevar su grilla horaria de medicación, control por turnos y foto en jaula.
+                        Puedes iniciar un nuevo ingreso hospitalario o revisar abajo sus hospitalizaciones anteriores.
                       </p>
                       <button
                         onClick={handleAdmitPatient}
                         className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl inline-flex items-center gap-1.5"
                       >
                         <Plus className="w-4 h-4" />
-                        Ingresar a Hospitalización
+                        Nuevo Ingreso a Hospitalización
                       </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
                       <div className="xl:col-span-8 space-y-4">
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                            <span className="text-xs font-extrabold text-teal-700 uppercase">
+                              Hospitalización Activa
+                            </span>
+                            <button
+                              type="button"
+                              onClick={openDischargeModal}
+                              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                            >
+                              <LogOut className="w-3.5 h-3.5" />
+                              <span>Dar de Alta Médica</span>
+                            </button>
+                          </div>
+
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                               <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
@@ -1720,7 +1808,152 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                </>
+
+                  {/* HISTORIAL DE HOSPITALIZACIONES DADAS DE ALTA */}
+                  {pastHosps.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                      <div className="flex items-center gap-2">
+                        <History className="w-4 h-4 text-teal-700" />
+                        <h3 className="text-sm font-extrabold text-slate-900">
+                          Historial de Hospitalizaciones Anteriores ({pastHosps.length})
+                        </h3>
+                      </div>
+
+                      <div className="space-y-3">
+                        {pastHosps.map((hosp) => {
+                          const histMeds = medicaciones.filter((m) => m.hospitalizacion_id === hosp.id);
+                          const histMons = monitoreos.filter((m) => m.hospitalizacion_id === hosp.id);
+                          const isExpanded = expandedHistoryId === hosp.id;
+
+                          return (
+                            <div
+                              key={hosp.id}
+                              className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white text-[11px] font-bold">
+                                    ALTA MÉDICA
+                                  </span>
+                                  <span className="text-xs font-extrabold text-slate-900">
+                                    Ingreso: {hosp.fecha_ingreso} → Alta: {hosp.fecha_retiro || 'Registrada'}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-extrabold">
+                                    Estancia: {hosp.dias_recomendados || calculateStayDays(hosp.fecha_ingreso, hosp.fecha_retiro)}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-semibold text-slate-500">
+                                  {hosp.ubicacion} • {hosp.medico_responsable}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-slate-800">
+                                <strong>Diagnóstico:</strong> {hosp.diagnostico || 'Sin diagnóstico registrado'}
+                              </p>
+
+                              {hosp.observaciones && (
+                                <p className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 whitespace-pre-line">
+                                  {hosp.observaciones}
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-[11px] text-slate-500 font-semibold">
+                                  {histMeds.length} medicamento(s) • {histMons.length} registro(s) de turno
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedHistoryId(isExpanded ? null : hosp.id)}
+                                  className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-teal-700 flex items-center gap-1"
+                                >
+                                  <span>{isExpanded ? 'Ocultar detalle' : 'Ver medicación y turnos'}</span>
+                                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="pt-2 border-t border-slate-200 space-y-3">
+                                  <div>
+                                    <h4 className="text-[11px] font-extrabold uppercase text-slate-600 mb-1.5">
+                                      Medicación Administrada en esta Hospitalización
+                                    </h4>
+                                    {histMeds.length === 0 ? (
+                                      <p className="text-xs text-slate-500">No se registraron medicamentos.</p>
+                                    ) : (
+                                      <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                                        <table className="w-full text-xs">
+                                          <thead className="bg-slate-800 text-white">
+                                            <tr>
+                                              <th className="text-left py-1.5 px-2.5">Fármaco</th>
+                                              <th className="text-left py-1.5 px-2">Dosis / Vía</th>
+                                              <th className="text-left py-1.5 px-2">Frecuencia</th>
+                                              <th className="text-left py-1.5 px-2">Tomas Aplicadas</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100">
+                                            {histMeds.map((m) => {
+                                              const doneHours = Object.entries(m.horarios_json || {})
+                                                .filter(([, st]) => st === 'done')
+                                                .map(([hr]) => hr);
+                                              return (
+                                                <tr key={m.id}>
+                                                  <td className="py-1.5 px-2.5 font-bold text-slate-800">{m.medicina}</td>
+                                                  <td className="py-1.5 px-2 text-slate-600">{m.dosis} ({m.via})</td>
+                                                  <td className="py-1.5 px-2 text-slate-600">{m.frecuencia} • {m.duracion}</td>
+                                                  <td className="py-1.5 px-2 font-semibold text-emerald-700">
+                                                    {doneHours.length > 0 ? doneHours.join(', ') : 'Programado'}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {histMons.length > 0 && (
+                                    <div>
+                                      <h4 className="text-[11px] font-extrabold uppercase text-slate-600 mb-1.5">
+                                        Controles de Turno Registrados
+                                      </h4>
+                                      <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                                        <table className="w-full text-[11px]">
+                                          <thead className="bg-slate-100 text-slate-700">
+                                            <tr>
+                                              <th className="text-left py-1.5 px-2">Fecha / Turno</th>
+                                              <th className="text-left py-1.5 px-2">T°</th>
+                                              <th className="text-left py-1.5 px-2">Comida</th>
+                                              <th className="text-left py-1.5 px-2">Vóm / Diar</th>
+                                              <th className="text-left py-1.5 px-2">Fluido</th>
+                                              <th className="text-left py-1.5 px-2">Resp.</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100">
+                                            {histMons.map((mon) => (
+                                              <tr key={mon.id}>
+                                                <td className="py-1.5 px-2 font-bold">{mon.fecha} ({mon.turno})</td>
+                                                <td className="py-1.5 px-2">{mon.temperatura || '-'}</td>
+                                                <td className="py-1.5 px-2">{mon.comida || '-'}</td>
+                                                <td className="py-1.5 px-2">{mon.vomitos}/{mon.diarreas}</td>
+                                                <td className="py-1.5 px-2">{mon.fluidoterapia_ml_h ? `${mon.fluidoterapia_ml_h} ml/h` : '-'}</td>
+                                                <td className="py-1.5 px-2">{mon.responsable || '-'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {activeTab === 'consultas' && (
@@ -2055,6 +2288,113 @@ export default function App() {
             </section>
           )}
         </main>
+      )}
+
+      {/* MODAL DE ALTA MÉDICA HOSPITALARIA */}
+      {showDischargeModal && currentHosp && (
+        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <form
+            onSubmit={handleConfirmDischarge}
+            className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <LogOut className="w-5 h-5 text-amber-600" />
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Dar de Alta a {currentPaciente?.nombre}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDischargeModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  Fecha de Alta
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={dischargeForm.fecha_retiro}
+                  onChange={(e) => {
+                    const newExit = e.target.value;
+                    setDischargeForm({
+                      ...dischargeForm,
+                      fecha_retiro: newExit,
+                      dias_totales: calculateStayDays(currentHosp.fecha_ingreso, newExit)
+                    });
+                  }}
+                  className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  Total Días Hospitalizado
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={dischargeForm.dias_totales}
+                  onChange={(e) => setDischargeForm({ ...dischargeForm, dias_totales: e.target.value })}
+                  className="w-full text-xs font-bold bg-teal-50 border border-teal-200 text-teal-900 rounded-xl px-3 py-2"
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+              <p className="text-[11px] font-extrabold text-slate-700">
+                Medicación que quedará archivada ({currentMeds.length}):
+              </p>
+              {currentMeds.length === 0 ? (
+                <p className="text-xs text-slate-500">Sin medicamentos registrados.</p>
+              ) : (
+                <ul className="text-xs text-slate-600 space-y-1 max-h-28 overflow-y-auto">
+                  {currentMeds.map((m) => (
+                    <li key={m.id}>
+                      • <strong>{m.medicina}</strong> ({m.dosis}, {m.via}, {m.frecuencia})
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                Indicaciones de Alta / Tratamiento en Casa
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Ej. Dieta blanda por 3 días, continuar omeprazol 10 mg VO cada 24h por 5 días..."
+                value={dischargeForm.notas_alta}
+                onChange={(e) => setDischargeForm({ ...dischargeForm, notas_alta: e.target.value })}
+                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDischargeModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold rounded-xl shadow-xs"
+              >
+                Confirmar Alta y Guardar
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {showNewPatientModal && (
